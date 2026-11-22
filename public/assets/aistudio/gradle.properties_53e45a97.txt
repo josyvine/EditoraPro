@@ -1,0 +1,8 @@
+android.useAndroidX=true
+android.enableJetifier=true
+
+# Prevents R class reference issues after upgrading to AGP 8.10.0
+android.nonTransitiveRClass=false
+
+# Gives Gradle + R8 + CMake enough memory and enforces UTF-8 encoding
+org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
