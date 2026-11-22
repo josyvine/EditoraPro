@@ -12,7 +12,7 @@ plugins {
 }
 
 android {
-  namespace = "com.example"
+  namespace = "com.vineyard.editoraPRO.app"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
@@ -46,7 +46,7 @@ android {
       val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
       storeFile = file(keystorePath)
       storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
+      keyAlias = "Editorapro"
       keyPassword = System.getenv("KEY_PASSWORD")
     }
     create("debugConfig") {
@@ -108,7 +108,7 @@ googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.W
 val ensureModelAssets = tasks.register("ensureModelAssets") {
   val assetsDir = file("src/main/assets")
   val models = mapOf(
-    "deeplab_v3.tflite" to "https://storage.googleapis.com/mediapipe-models/image_segmenter/deeplab_v3/float32/latest/deeplab_v3.tflite",
+    "deeplab_v3.tflite" to "https://storage.googleapis.com/mediapipe-models/image_segmenter/deeplab_v3/float32/1/deeplab_v3.tflite",
     "selfie_multiclass_256x256.tflite" to "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite",
     "efficientdet_lite0.tflite" to "https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/int8/1/efficientdet_lite0.tflite",
     "edge_sam_3x_encoder.onnx" to "https://huggingface.co/chongzhou/EdgeSAM/resolve/main/edge_sam_3x_encoder.onnx",
