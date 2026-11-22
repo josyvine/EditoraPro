@@ -25,13 +25,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
-
-      - name: Grant Execute Permission to Gradle Wrapper
-        run: chmod +x gradlew
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
@@ -59,70 +52,81 @@ jobs:
           fetch_if_missing "edge_sam_3x_decoder.onnx" "https://huggingface.co/chongzhou/EdgeSAM/resolve/main/edge_sam_3x_decoder.onnx"
           ls -lh "$ASSETS_DIR"
 
-      - name: Decode Keystore (if configured)
+      - name: Decode Keystore
         id: keystore
-        shell: bash
         run: |
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ${{ github.workspace }}/my-upload-key.jks
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ${{ github.workspace }}/keystore.jks
             echo "has_signing=true" >> $GITHUB_OUTPUT
           else
             echo "has_signing=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build Signed Release APK & AAB (or Debug fallback on PR)
+      - name: Build Release APK & Play Store AAB
+        uses: gradle/gradle-build-action@v3
         env:
-          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
-          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_FILE: ${{ github.workspace }}/keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          if [ "${{ steps.keystore.outputs.has_signing }}" = "true" ]; then
-            ./gradlew assembleRelease bundleRelease --stacktrace
-          else
-            ./gradlew assembleDebug --stacktrace
-          fi
+        with:
+          gradle-version: '8.11.1'
+          cache-disabled: true
+          arguments: ${{ steps.keystore.outputs.has_signing == 'true' && 'clean app:assembleRelease app:bundleRelease' || 'clean app:assembleDebug' }}
 
-      - name: Verify 16 KB Page Size Alignment in AAB / APK
+      - name: Verify 16 KB Page Size Alignment in AAB
+        if: steps.keystore.outputs.has_signing == 'true'
         shell: bash
         run: |
+          AAB_PATH="app/build/outputs/bundle/release/app-release.aab"
+          if [ ! -f "$AAB_PATH" ]; then
+            echo "❌ AAB file not found at $AAB_PATH"
+            exit 1
+          fi
+
           SDK_DIR="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           LLVM_OBJDUMP=$(find "$SDK_DIR/ndk" -name "llvm-objdump" | head -n 1)
           if [ -z "$LLVM_OBJDUMP" ]; then
-            echo "llvm-objdump not found, skipping ELF check"
-            exit 0
+            echo "❌ llvm-objdump not found in $SDK_DIR/ndk"
+            exit 1
           fi
-          TARGET_ARCHIVE=""
-          if ls app/build/outputs/bundle/release/*.aab 1> /dev/null 2>&1; then
-            TARGET_ARCHIVE=$(ls app/build/outputs/bundle/release/*.aab | head -n 1)
-            PATTERN="base/lib/arm64-v8a/* base/lib/x86_64/*"
-          elif ls app/build/outputs/apk/debug/*.apk 1> /dev/null 2>&1; then
-            TARGET_ARCHIVE=$(ls app/build/outputs/apk/debug/*.apk | head -n 1)
-            PATTERN="lib/arm64-v8a/* lib/x86_64/*"
-          fi
-          if [ -z "$TARGET_ARCHIVE" ]; then exit 0; fi
 
           TMP_DIR=$(mktemp -d)
-          unzip -q "$TARGET_ARCHIVE" $PATTERN -d "$TMP_DIR" || true
+          unzip -q "$AAB_PATH" "base/lib/arm64-v8a/*" "base/lib/x86_64/*" -d "$TMP_DIR" || true
+
           FAILED=0
+          FOUND=0
           while IFS= read -r -d '' SO; do
+            FOUND=1
             REL_PATH="${SO#$TMP_DIR/}"
-            echo "Checking 16KB alignment: $REL_PATH"
+            echo "Checking: $REL_PATH"
             ALIGNS=$("$LLVM_OBJDUMP" -p "$SO" | grep "LOAD" | awk '{print $NF}')
+            if [ -z "$ALIGNS" ]; then
+              echo "  ⚠️ No LOAD segments found in $REL_PATH"
+              FAILED=1
+              continue
+            fi
             for A in $ALIGNS; do
+              echo "  LOAD align: $A"
               EXP=${A#2\*\*}
               if ! [[ "$EXP" =~ ^[0-9]+$ ]] || [ "$EXP" -lt 14 ]; then
-                echo "UNALIGNED (< 16KB): $REL_PATH ($A)"
+                echo "  ❌ UNALIGNED (< 16KB): $REL_PATH ($A)"
                 FAILED=1
               fi
             done
           done < <(find "$TMP_DIR" -name "*.so" -print0)
+
           rm -rf "$TMP_DIR"
+          if [ "$FOUND" -eq 0 ]; then
+            echo "ℹ️ No 64-bit .so libraries found in AAB."
+            exit 0
+          fi
+
           if [ "$FAILED" -ne 0 ]; then
-            echo "16 KB page size verification FAILED!"
+            echo "❌ 16 KB page size verification FAILED!"
             exit 1
           fi
-          echo "All 64-bit .so libraries are 16 KB aligned!"
+          echo "✅ All 64-bit .so libraries in the AAB are 16 KB aligned!"
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
