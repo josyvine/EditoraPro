@@ -1,0 +1,170 @@
+================================================================================
+INSTRUCTION SET 1: COMPLETE APP ARCHITECTURE, LOGIC & FEATURE SPECIFICATION
+Target Package: com.vineyard.editoraPRO.app
+Platform: Pure Native Android (Kotlin + Jetpack Compose) — Zero HTML / WebView
+================================================================================
+
+YOU ARE TASKED WITH BUILDING A 1:1 PURE NATIVE ANDROID REPLICA OF THE "AI REFERENCE VIDEO DIRECTOR" STUDIO.
+Every interface component, styling element, telemetry system, network engine, and execution model from the source web architecture must be converted into native Android components using Jetpack Compose, Kotlin Coroutines, Media3, OpenGL ES 3.0, and OkHttp.
+
+--------------------------------------------------------------------------------
+1. CORE PHILOSOPHY & NON-NEGOTIABLE PRINCIPLES
+--------------------------------------------------------------------------------
+1. ZERO HARDCODED EFFECTS OR TIMELINES:
+   - The native host provides ONLY raw primitives (frame extraction, aspect-safe cover drawing, WebGL2/GLSL #version 300 es shader runner, box detection, audio extraction, and segmentation confidence masks).
+   - Gemini synthesizes 100% of the editing blueprint, timing, compositing math, and rendering code live.
+2. DUAL-ENGINE GEMINI PLATFORM COMPLIANCE:
+   - Vertex AI Mode (lunar-tag / global): Header auth (`x-goog-api-key`), `:countTokens` live probing, inline base64 media transport with memory caching, 20-second cooldown on HTTP 429 (single-key), Visual QA toggle default UNCHECKED, maxPasses = 1 with graceful fallback.
+   - AI Studio Mode (v1beta): Query parameter auth (`?key=`), live `GET /v1beta/models` fetching, multipart Files API upload (`/upload/v1beta/files`) with polling + URI caching, Thinking/Reasoning Level selector (`minimal`, `low`, `medium`, `high`, `xhigh`), Visual QA toggle default CHECKED, maxPasses = 2.
+3. ISOLATED MULTI-API KEY CYCLING:
+   - Both Vertex AI and AI Studio maintain completely independent API key lists in local storage (`EncryptedSharedPreferences` or `DataStore`).
+   - Every outbound request rotates sequentially to the next key to avoid single-key rate limits.
+   - Per-key metrics (request count, error count) and visual indicators ("NEXT" badge, masked keys) are tracked.
+4. ZERO-CLICK AUTOMATION:
+   - All cutouts, scene-cut probes, beat detections, and bounding boxes run automatically without user clicks or taps.
+
+--------------------------------------------------------------------------------
+2. EXACT DESIGN SYSTEM & COLOR THEME (1:1 MAPPING TO JETPACK COMPOSE)
+--------------------------------------------------------------------------------
+Create a custom Compose theme (`Color.kt`, `Theme.kt`) matching the exact hex values:
+- Background:       Color(0xFF090B10)
+- Surface:          Color(0xFF121621)
+- Surface-2:        Color(0xFF1A2030)
+- Border:           Color(0x17FFFFFF)  // rgba(255, 255, 255, 0.09)
+- Text Primary:     Color(0xFFF3F5F9)
+- Text Muted:       Color(0xFF93A0B8)
+- Accent (Primary): Color(0xFF6C7CFF)
+- Accent-2 (Cyan):  Color(0xFF22D3EE)
+- Success:          Color(0xFF22C55E)
+- Warn:             Color(0xFFF59E0B)
+- Danger:           Color(0xFFEF4444)
+- Radius:           16.dp (Cards, Buttons: 12.dp, Chips: 10.dp, Badges: 999.dp)
+- Top Bar:          Height 56.dp, blur backdrop or solid Surface color, glowing brand dot (gradient Accent to Accent-2).
+- Bottom Bar:       Height 64.dp + safe area inset padding, Surface background with border top.
+- Status Pills:     Rounded 999.dp, Surface-2 container, border, text color colored by state (Ready: Success, Warn: Warn).
+
+--------------------------------------------------------------------------------
+3. TOP-LEVEL APP SHELL & NAVIGATION
+--------------------------------------------------------------------------------
+The app uses a 3-tab Bottom Navigation structure:
+Tab 1: Studio (Film icon) — Contains the 3-step Wizard.
+Tab 2: AI Logic (Code icon) — Diagnostic telemetry, live thought terminal, code inspector.
+Tab 3: Settings (Gear icon) — API Provider switch, key rotation manager, model fetcher, reasoning selector.
+
+Top App Bar:
+- Left: Brand indicator with cyan glowing dot + "AI Video Director" text.
+- Right: Header status pill displaying active model name and API key count (e.g., "gemini-3.5-flash • 2 key(s)").
+
+--------------------------------------------------------------------------------
+4. STUDIO TAB: THE 3-STEP WIZARD SPECIFICATION
+--------------------------------------------------------------------------------
+A top wizard bar with tabs `1. Reference`, `2. Media / Prompt`, `3. Export` controls the active pane. Completed steps display green text and a check badge.
+
+--- WIZARD STEP 1: REFERENCE ENGINE ---
+- Card Header: Step badge "1", Title "Reference Video (Optional)", Status pill ("Optional / Skipped" or "Ready").
+- Subtext explaining users can upload an MP4/WebM, paste a YouTube link, or skip entirely to prompt-only mode.
+- Upload Box: Dashed border button triggering native `ActivityResultContracts.PickVisualMedia`.
+- YouTube Bar: URL input field supporting standard YouTube, Shorts, and youtu.be links + "Load" button.
+- Video Preview Wrap: Shows video player or embedded YouTube preview + "Analyze Reference & Synthesize AI Tools" button + "Clear" button.
+- Local Analysis Primitives executed before calling Gemini:
+  1. Safe Duration Extractor: Probes true duration even for non-standard/streamed containers.
+  2. Local MAD Scene-Cut Detector: Samples video at ~2.5 frames/sec, downscaled to 64px width; computes Mean Absolute Difference (MAD) across adjacent frame RGB values; dynamically sets threshold `avgMad + 0.75 * stdMad` to identify visual cut timestamps.
+  3. Audio Beat Detector: Decodes audio stream into raw PCM FloatArray; computes RMS energy across 50ms windows; detects local peaks (>1.45x local average, min gap 0.25s).
+  4. Storyboard Generator: Extracts a 5x5 grid (25 timestamped frame thumbnails).
+  5. Anchor Keyframe Sheet: Generates a 4-column keyframe sheet specifically capturing visual cuts and detected beat peaks.
+- Stage 1 Gemini Request:
+  - Streams live thought tokens (`p.thought`) to the terminal.
+  - Streams `[LOG]` lines describing every cut, panel layout, blur direction, and light-trail strand count.
+  - Emits `===JSON_RESULT===`: JSON with `meta` (duration, aspect ratio, cuts, beats) and `timelineBlueprint`.
+  - Emits `===CODE_RESULT===`: Helper tools implementing custom effects.
+- Live Process Monitor: Shows spinning indicator, elapsed time, characters received, progress bar, and rolling log feed.
+
+--- WIZARD STEP 2: USER MEDIA & AI PROMPT ---
+- Card Header: Step badge "2", Title "Your Media & AI Prompt", Count pill ("X items").
+- Multi-Asset Upload Box: Supports multi-selection of videos and images (including tile grid templates).
+- Clips Grid: Horizontal or grid scroll of media chips showing thumbnail, media index `#N`, type (`VID`/`IMG`), duration/dimensions, and remove button.
+- Media Inspector Pipeline: For every added item, determines dimensions, duration, presence of audio track, and builds a contact sheet (2x2 timestamps for videos, single proportional fit for images; packs into 3x2 composite sheets if clips > 6).
+- Custom Audio Bar: Optional attachment of standalone music/audio file with beat detection.
+- Toggles:
+  - "Include Audio Track (Ref / Custom / AI)" (Switch, default checked).
+  - "Auto Visual QA & Self-Fix (Style Check)" (Switch, default checked for AI Studio, unchecked for Vertex AI).
+- Prompt Textarea: Instructions with priority override (e.g., "Keep premises as original", "Add anime style piano").
+- Action: "AI Plan & Generate Live Edit" button.
+- Stage 2 Request: Sends blueprint from Stage 1, prompt instructions, and visual asset sheets; parses JSON (`aspectWidth`, `aspectHeight`, `totalDurationSec`, `editPlan`) and executable pipeline code (`init` + `renderFrame`).
+- Technical Validation: Pre-renders 9–14 probe timestamps before user preview. If blank/black or crashing, triggers automated self-healing fix loop up to 6 times.
+- Auto Visual QA Execution (if toggle enabled): Runs Step A (Blind Visual Audit) and Step B (Pipeline Rewrite).
+
+--- WIZARD STEP 3: OUTPUT PREVIEW & EXPORT ---
+- Canvas Stage: Custom composited Surface/Canvas maintaining the AI-determined aspect ratio.
+- Scrubber Row: Elapsed time label, Seek slider (0.0s to duration), Total time label.
+- Controls: "Play Preview" / "Pause", "Export Video".
+- On-Demand Auto-Fix Box: Input text for user revision notes + "AI Auto-Fix" button (runs Visual QA self-fix even with toggle off).
+- Hardware Export Pipeline: Deterministic frame-by-frame rendering at chosen FPS (24/30) using AndroidX Media3 Transformer or MediaCodec + MediaMuxer (H.264/AAC), producing an exact-duration MP4 with audio.
+- Download Wrap: In-app video preview player + "Download / Share Rendered Video" button.
+
+--------------------------------------------------------------------------------
+5. AI LOGIC INSPECTOR TAB
+--------------------------------------------------------------------------------
+1. Diagnostic Report Card:
+   - "Copy All" and "Download" buttons.
+   - Packages entire session state (model, keys, prompt, asset dimensions, full execution log, thought stream, JSON blueprint, synthesized tools code, and pipeline code) into a timestamped report.
+2. Live Stream & Thought Monitor:
+   - Real-time terminal display showing incoming reasoning tokens (`[THOUGHT] ...`) and streaming pipeline text with auto-scroll.
+3. Deep Execution Log:
+   - Scrollable monospace terminal with time-stamped entries logging API cycles, token counts, scene-cut thresholds, WebGL shader compilations, and export telemetry.
+4. Raw Code Viewers:
+   - Blueprint JSON viewer with syntax highlighting/formatting.
+   - Synthesized Tools Code viewer.
+   - Edit Pipeline Code viewer.
+
+--------------------------------------------------------------------------------
+6. SETTINGS TAB
+--------------------------------------------------------------------------------
+1. API Provider Selector:
+   - Dropdown: "Vertex AI (Gemini Platform • lunar-tag/global)" vs "AI Studio (Google Generative Language v1beta)".
+   - Switching providers swaps active key lists, endpoints, and default Visual QA toggle behavior without cross-contaminating settings.
+2. Key Management Card:
+   - Input field + "Add" button.
+   - List of added keys showing masked string (`AIza••••1234`), total requests served, and error counts.
+   - Active "NEXT" indicator badge on the next key in rotation. Delete button per key.
+3. Model Selection Card:
+   - Dropdown of models + "Fetch Live Models" button with spinning state.
+   - Vertex Mode: Probes candidate list via parallel `:countTokens` POST requests.
+   - AI Studio Mode: Fetches dynamically from `GET /v1beta/models`.
+   - Displays token limits and descriptions.
+4. Reasoning / Thinking Level Card (Visible when AI Studio is active):
+   - Dropdown: `Model Default (Auto)`, `Minimal`, `Low`, `Medium`, `High`, `Extra High`.
+   - Injects `thinkingConfig.thinkingLevel` (Gemini 3/3.5/4) or mapped `thinkingConfig.thinkingBudget` (Gemini 2.5).
+5. Render Preferences:
+   - FPS: 24 fps (Cinematic), 30 fps (Smooth).
+   - Max Canvas Edge: 720p (Fast Mobile), 1080p (HD).
+
+--------------------------------------------------------------------------------
+7. EXECUTION ENGINE SPECIFICATION: REPLACING JS `new Function()`
+--------------------------------------------------------------------------------
+To maintain 100% parity with the web version's ability to run AI-synthesized code:
+- Embed `io.github.dokar3:quickjs-kt-android:1.0.15` as the execution bridge.
+- Bind native host primitives to the JavaScript global `runtime` object:
+  - `runtime.getCanvas(key, w, h)` -> Offscreen Bitmap / OpenGL FBO buffer.
+  - `runtime.getFrame(media, t)` -> Extracts Bitmap at timestamp `t`.
+  - `runtime.drawCover(ctx, media, x, y, w, h, zoom)` -> Aspect-safe draw.
+  - `runtime.runShader(key, w, h, glsl, textures, uniforms)` -> Native OpenGL ES 3.0 fragment shader runner.
+  - `runtime.detectBoxes(media, t)` -> MediaPipe EfficientDet-Lite0 box detector.
+  - `runtime.getMediaPipeMask(media, w, h)` -> MediaPipe DeepLab-v3 + Selfie Multiclass human mask.
+  - `runtime.getSamMask(media, w, h, opts)` -> EdgeSAM ONNX mask runner.
+  - `runtime.chromaKey(media, w, h, targetRGB, tolerance, feather)` -> GPU or CPU green-screen removal.
+  - `runtime.extractAudio(clip)` / `runtime.setAudioBuffer(buf)` -> PCM audio bridge.
+- The QuickJS engine executes `init(clips)` once, then calls `renderFrame(ctx, width, height, t, duration, clips)` for every timeline tick.
+
+--------------------------------------------------------------------------------
+8. TWO-STEP BLIND VISUAL QA & SELF-HEALING ARCHITECTURE
+--------------------------------------------------------------------------------
+When enabled (or triggered manually via "AI Auto-Fix"):
+1. The app renders a 25-frame output storyboard, a side-by-side [REF t | OUT t] comparison sheet, and an encoded preview MP4.
+2. Step A (Blind Inspection): Sends the visual media to Gemini WITHOUT showing the existing code. Gemini scores 5 criteria (Aspect, Layout, Effects, Timing, Color) from 1 to 10 and reports visual defects.
+3. Step B (Code Rewrite): If score < 8 or any sub-score fails, the diagnostic report, user media summaries, and existing code are sent to Gemini to rewrite `renderFrame()` and fix defects.
+4. Technical Compile Verification: The rewritten code is tested across probe timestamps. If any runtime error or flat/blank frame is detected, it auto-repairs up to 6 times.
+
+================================================================================
+END OF INSTRUCTION SET 1
+================================================================================
