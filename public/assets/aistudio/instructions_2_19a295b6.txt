@@ -1,0 +1,156 @@
+================================================================================
+INSTRUCTION SET 2: PROJECT FILE INVENTORY, BUILD SYSTEM & CI/CD WORKFLOW
+Target Package: com.vineyard.editoraPRO.app
+Target Architecture: Pure Native Android (Kotlin + Jetpack Compose)
+================================================================================
+
+DIRECTIVE:
+You must create the complete file layout, directory hierarchy, Gradle build setup,
+ProGuard specifications, Android Manifest, and GitHub Actions CI/CD release workflow
+for the project. Do NOT use webviews or HTML assets. Follow these explicit requirements:
+
+--------------------------------------------------------------------------------
+1. MANDATORY PROJECT DIRECTORY & FILE INVENTORY TO CREATE
+--------------------------------------------------------------------------------
+Generate the project structure with the following exact file layout:
+
+Root Level:
+- settings.gradle.kts: Configure pluginManagement and dependencyResolutionManagement with Google, MavenCentral, and JitPack. Include root project name 'editoraPRO' and ':app' module.
+- build.gradle.kts: Root build file applying application, Kotlin, Compose, and Serialization plugins with 'apply false'.
+- gradle.properties: JVM heap allocation (-Xmx4096m), AndroidX enablement, non-transitive R class flag, and official Kotlin code style.
+- .gitignore: Standard Android exclusions (.gradle, build/, local.properties, *.jks, *.hprof, .idea).
+- .github/workflows/build_and_release.yml: Automated signing and release workflow.
+
+App Module (app/):
+- build.gradle.kts: Application plugin configuration, signing configs, packaging options, asset compression rules, and all third-party dependencies.
+- proguard-rules.pro: Obfuscation and keep rules for ML runtimes, JNI bridges, and network libraries.
+- src/main/AndroidManifest.xml: Permission declarations, OpenGL ES 3.0 hardware flag, large heap, application class, main activity, and FileProvider configuration.
+- src/main/res/xml/file_paths.xml: FileProvider path mappings for exported video storage and temporary media cache.
+- src/main/res/values/strings.xml & colors.xml: App string constants and basic resource color mappings.
+- src/main/assets/: Destination directory containing the 5 exact ML model files:
+    1. deeplab_v3.tflite
+    2. selfie_multiclass_256x256.tflite
+    3. efficientdet_lite0.tflite
+    4. edge_sam_3x_encoder.onnx
+    5. edge_sam_3x_decoder.onnx
+
+Source Code Structure (app/src/main/java/com/vineyard/editoraPRO/app/):
+- EditoraApp.kt: Application class initializing logging and ML runtime contexts.
+- MainActivity.kt: ComponentActivity setting Compose content and handling runtime permissions (Storage/Media).
+- AppNavigation.kt: Root composable managing bottom navigation state and screen switching.
+
+UI Layer (ui/):
+- theme/Color.kt: Palette defining Background (#090B10), Surface (#121621), Surface-2 (#1A2030), Border (#17FFFFFF), Primary Accent (#6C7CFF), Cyan Accent (#22D3EE), Success (#22C55E), Warn (#F59E0B), Danger (#EF4444).
+- theme/Theme.kt: Material3 dark color scheme mapping custom colors to standard slots.
+- theme/Type.kt: Typography configuration supporting both standard system fonts and tabular monospace for telemetry/code.
+- components/TopBar.kt: Top app bar showing cyan glowing gradient dot, app title, and header status pill.
+- components/BottomNav.kt: 3-tab navigation bar (Studio, AI Logic, Settings) with icons and active indicators.
+- components/StatusPill.kt: Reusable badge component supporting Ready, Warn, and Next states.
+- components/LiveProcessMonitor.kt: Telemetry component showing live elapsed timer, character/token count, shimmer progress bar, and rolling terminal text.
+- components/VideoScrubber.kt: Seek bar slider bound to video current timestamp and total duration.
+- components/CodeViewer.kt: Scrollable monospace container with dark background for JSON, JavaScript, and diagnostic logs.
+- screens/studio/StudioScreen.kt: Wizard parent screen hosting step indicator tabs and active panes.
+- screens/studio/Step1ReferencePane.kt: Reference video file uploader, YouTube URL input, local MAD cut detector, audio beat probe, and Stage 1 analysis trigger.
+- screens/studio/Step2MediaPromptPane.kt: Multi-clip asset picker, contact sheet generator, custom audio track bar, audio/QA switches, user prompt area, and Stage 2 trigger.
+- screens/studio/Step3ExportPane.kt: Composited video canvas preview, playback controls, scrubber, manual AI auto-fix revision input, and hardware MP4 exporter.
+- screens/logic/AiLogicScreen.kt: Full diagnostic report generator (Copy All / Download), live thought terminal, execution log viewer, and blueprint/pipeline code inspectors.
+- screens/settings/SettingsScreen.kt: Dual provider selector (Vertex AI vs AI Studio), multi-key list manager with rotation stats, live model fetcher, reasoning level picker, and FPS/resolution options.
+
+Data Layer (data/):
+- model/AppState.kt: Central state holder matching all reactive properties from the web tool.
+- model/ApiKeyEntry.kt: Data model storing API key, request count, error count, and masked display string.
+- model/ProviderMode.kt: Enum differentiating VERTEX_AI and AI_STUDIO.
+- model/ThinkingLevel.kt: Enum mapping thinking levels (DEFAULT, MINIMAL, LOW, MEDIUM, HIGH, XHIGH).
+- model/ClipAsset.kt: Media item model holding local URI, dimensions, duration, audio flag, and generated contact sheet.
+- model/Blueprint.kt: Data classes parsing Stage 1 and Stage 2 JSON results (cuts, beats, duration, layout, panel rects).
+- local/PreferencesManager.kt: Secure local storage (EncryptedSharedPreferences or DataStore) maintaining isolated key lists, selected provider, model lists, and render preferences.
+- remote/GeminiClient.kt: HTTP client handling multi-key sequential rotation, error tracking, and fallback retry loops.
+- remote/VertexAiService.kt: Service implementing Vertex AI REST and SSE endpoints on lunar-tag/global with x-goog-api-key header authentication and countTokens probing.
+- remote/AiStudioService.kt: Service implementing AI Studio v1beta endpoints, query param authentication, GET /v1beta/models discovery, and multipart Files API uploads.
+
+Domain Layer (domain/):
+- media/FrameExtractor.kt: Utility probing accurate video duration and extracting scaled Bitmap frames at designated timestamps.
+- media/SceneCutDetector.kt: Implementation of the 64px MAD (Mean Absolute Difference) frame-difference algorithm detecting visual cut timestamps.
+- media/BeatDetector.kt: Implementation of the 50ms PCM energy window algorithm detecting audio beat peaks.
+- media/InspectionSheetBuilder.kt: Image synthesizer creating the 5x5 diagnostic storyboard and 4-column anchor cut/beat keyframe sheet.
+- vision/SmartSegmenter.kt: Native vision coordinator executing MediaPipe (DeepLab-v3 + Multiclass + EfficientDet) and EdgeSAM via ONNX Runtime without user clicks.
+- engine/QuickJsRunner.kt: Native JavaScript execution bridge hosting the QuickJS engine and binding native runtime primitives.
+- engine/NativeRuntimeApi.kt: Interface defining all raw host primitives (getFrame, drawCover, runShader, detectBoxes, getMediaPipeMask, getSamMask, chromaKey, extractAudio).
+- engine/GlShaderRunner.kt: OpenGL ES 3.0 offscreen framebuffer runner compiling and executing GLSL #version 300 es fragment shaders on GPU.
+- qa/VisualQaManager.kt: Orchestrator executing the two-step Blind Visual Audit and Code Rewrite self-healing loop.
+- export/VideoExporter.kt: Deterministic frame-by-frame hardware video encoder and muxer outputting exact-duration MP4 files.
+
+--------------------------------------------------------------------------------
+2. BUILD SYSTEM & DEPENDENCY SPECIFICATION (app/build.gradle.kts)
+--------------------------------------------------------------------------------
+Configure the application module build file with the following technical settings:
+- Target SDK: 35
+- Compile SDK: 35
+- Min SDK: 26 (Android 8.0 Oreo)
+- Java/Kotlin JVM Target: 17
+- NDK ABI Filters: Enable 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'.
+- Compose Compiler: Enabled with Kotlin 2.0 Compose compiler plugin.
+- Resource Packaging (MANDATORY): Add noCompress += listOf("tflite", "onnx") in androidResources to prevent AAPT compression from corrupting ML model loading.
+- Third-Party Libraries to integrate:
+    1. Jetpack Compose BOM (Material3, Icons Extended, Foundation, Runtime, Activity Compose).
+    2. Lifecycle ViewModel Compose and Lifecycle Runtime KTX.
+    3. Coil Compose with video frame decoding support.
+    4. Square OkHttp core and OkHttp SSE (for streaming Gemini tokens).
+    5. Kotlinx Serialization JSON.
+    6. AndroidX Security Crypto (for encrypted API key storage).
+    7. AndroidX Media3 (media3-exoplayer, media3-transformer, media3-effect, media3-common).
+    8. Google AI Edge MediaPipe Tasks Vision (com.google.mediapipe:tasks-vision:1.0.0).
+    9. Microsoft ONNX Runtime Mobile (com.microsoft.onnxruntime:onnxruntime-android:1.20.0).
+    10. QuickJS Android Engine (io.github.dokar3:quickjs-kt-android:1.0.15).
+
+--------------------------------------------------------------------------------
+3. PROGUARD & OBFUSCATION REQUIREMENTS (proguard-rules.pro)
+--------------------------------------------------------------------------------
+Specify exact keep rules to prevent release build breakage:
+- Preserve all classes and native JNI methods in com.google.mediapipe.tasks.** and com.google.mediapipe.framework.**
+- Preserve all classes and JNI methods in ai.onnxruntime.**
+- Preserve all classes and JNI bindings in io.github.dokar3.quickjs.**
+- Keep attributes for OkHttp annotations, signatures, and Serialization companions.
+- Preserve AndroidX Media3 transformer and effect pipeline components.
+
+--------------------------------------------------------------------------------
+4. MANIFEST & PERMISSIONS DIRECTIVE (AndroidManifest.xml)
+--------------------------------------------------------------------------------
+Declare all system capabilities and permissions:
+- Permissions: INTERNET, ACCESS_NETWORK_STATE.
+- Media Permissions: READ_MEDIA_VIDEO, READ_MEDIA_IMAGES, READ_MEDIA_AUDIO, with fallback READ_EXTERNAL_STORAGE for API <= 32.
+- Hardware Features: Require glEsVersion 0x00030000 (OpenGL ES 3.0), mark camera as non-required.
+- Application Attributes: Enable hardwareAccelerated=true, largeHeap=true.
+- Activity Attributes: Configure MainActivity with launchMode standard, windowSoftInputMode adjustResize, and configChanges handling orientation, screenSize, and keyboardHidden.
+- FileProvider: Define androidx.core.content.FileProvider with authority 'com.vineyard.editoraPRO.app.fileprovider' referencing res/xml/file_paths.xml.
+
+--------------------------------------------------------------------------------
+5. ASSETS PLACEMENT & VERIFICATION DIRECTIVE
+--------------------------------------------------------------------------------
+Instruct that all 5 model files must be placed directly inside app/src/main/assets/:
+- deeplab_v3.tflite (~2.8 MB): Google MediaPipe scene segmenter.
+- selfie_multiclass_256x256.tflite (~15.6 MB): Google MediaPipe human body/hair/clothes segmenter.
+- efficientdet_lite0.tflite (~4.4 MB): Google MediaPipe 80-class zero-click box detector.
+- edge_sam_3x_encoder.onnx (~22.1 MB): EdgeSAM image feature encoder.
+- edge_sam_3x_decoder.onnx (~15.9 MB): EdgeSAM promptable mask decoder.
+
+--------------------------------------------------------------------------------
+6. CI/CD GITHUB ACTIONS WORKFLOW SPECIFICATION (.github/workflows/build_and_release.yml)
+--------------------------------------------------------------------------------
+Define an automated release pipeline with the following execution steps:
+- Trigger Events: Push to main/master branches, version tag pushes (v*), pull requests, and manual workflow_dispatch.
+- Concurrency: Group by workflow and ref with cancel-in-progress enabled.
+- Runner Environment: ubuntu-latest with JDK 17 (Eclipse Temurin) and Gradle caching enabled.
+- Model Integrity Step: Verify presence of all 5 assets in app/src/main/assets/. If missing in Git, curl/download them directly from official sources during CI setup so the build never fails on missing binaries.
+- Signing & Keystore Handling:
+    1. Read KEYSTORE_BASE64 from GitHub Secrets.
+    2. Decode base64 string into keystore.jks in the workspace.
+    3. Pass KEYSTORE_FILE, KEYSTORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD as environment variables to Gradle.
+    4. If secrets are present, execute ./gradlew assembleRelease bundleRelease.
+    5. If secrets are absent (e.g., standard PR), fallback to ./gradlew assembleDebug.
+- Artifact Packaging: Collect generated APKs and AABs from build/outputs and upload via actions/upload-artifact with 14-day retention.
+- Release Publishing: On version tag push (v*), automatically create a GitHub Release using softprops/action-gh-release attaching the signed APK and AAB.
+
+================================================================================
+END OF INSTRUCTION SET 2
+================================================================================
