@@ -1,4 +1,4 @@
-package com.example
+package com.vineyard.editoraPRO.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
