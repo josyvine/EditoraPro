@@ -3,7 +3,7 @@ package com.vineyard.editoraPRO.app.security
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.Debug
-import com.example.BuildConfig
+import com.vineyard.editoraPRO.app.BuildConfig
 import java.io.File
 
 /**
