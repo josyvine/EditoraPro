@@ -56,7 +56,7 @@ jobs:
         id: keystore
         run: |
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ${{ github.workspace }}/keystore.jks
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ${{ github.workspace }}/my-upload-key.jks
             echo "has_signing=true" >> $GITHUB_OUTPUT
           else
             echo "has_signing=false" >> $GITHUB_OUTPUT
@@ -65,7 +65,9 @@ jobs:
       - name: Build Release APK & Play Store AAB
         uses: gradle/gradle-build-action@v3
         env:
-          KEYSTORE_FILE: ${{ github.workspace }}/keystore.jks
+          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
+          KEYSTORE_FILE: ${{ github.workspace }}/my-upload-key.jks
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
