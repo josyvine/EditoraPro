@@ -12,7 +12,7 @@ plugins {
 }
 
 android {
-  namespace = "com.vineyard.editoraPRO.app"
+  namespace = "com.vineyard.Editpro.app"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
@@ -46,7 +46,7 @@ android {
       val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
       storeFile = file(keystorePath)
       storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "Editorapro"
+      keyAlias = "Editpro"
       keyPassword = System.getenv("KEY_PASSWORD")
     }
     create("debugConfig") {
